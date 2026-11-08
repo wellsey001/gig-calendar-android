@@ -4,7 +4,7 @@
 
 See when the artists you listen to on Spotify are playing near you, or anywhere in the country, in one clean calendar.
 
-**Open the app:** https://YOUR-GITHUB-NAME.github.io/gig-calendar/
+**Open the app:** https://wellsey001.github.io/gig-calendar/
 
 <p align="center">
   <img src="screenshots/month.png" alt="Month view with gigs shown as ticket stubs on each day" width="800">
