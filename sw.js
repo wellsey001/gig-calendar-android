@@ -1,6 +1,6 @@
 // Keeps the app opening when the phone is offline. Always tries the network first,
 // so a new index.html on GitHub reaches everyone straight away.
-const CACHE = 'gig-calendar-v1';
+const CACHE = 'earshot-v1';
 const SHELL = ['./', 'index.html', 'manifest.json', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

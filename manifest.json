@@ -1,18 +1,36 @@
 {
   "id": "./",
-  "name": "Gig calendar",
-  "short_name": "Gigs",
-  "description": "Upcoming gigs from the artists in your Spotify library, near you or across the country.",
+  "name": "Earshot",
+  "short_name": "Earshot",
+  "description": "Gigs from the artists in your Spotify library, near you and across the country.",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "portrait",
-  "background_color": "#1B2140",
-  "theme_color": "#1B2140",
-  "categories": ["music", "entertainment"],
+  "background_color": "#231942",
+  "theme_color": "#231942",
+  "categories": [
+    "music",
+    "entertainment"
+  ],
   "icons": [
-    { "src": "icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
-    { "src": "icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
-    { "src": "icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "icon-maskable-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
   ]
 }
