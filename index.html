@@ -1,0 +1,742 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Gig calendar</title>
+<link rel="manifest" href="manifest.json">
+<link rel="icon" href="icon-192.png">
+<meta name="theme-color" content="#E9ECF3" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121729" media="(prefers-color-scheme: dark)">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:wght@400;700&family=Bricolage+Grotesque:opsz,wght@12..96,600;12..96,800&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E9ECF3; --surface:#FFFFFF; --ink:#1B2140; --muted:#5B6385; --line:#D3D8E6;
+  --near:#C8205F; --on-near:#FFFFFF; --far:#17696A; --far-soft:#DCEFEE;
+  --display:'Bricolage Grotesque','Avenir Next','Segoe UI',system-ui,sans-serif;
+  --body:'Atkinson Hyperlegible','Segoe UI',system-ui,-apple-system,sans-serif;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root{
+    --bg:#121729; --surface:#1B2240; --ink:#E7EAF6; --muted:#9AA2C4; --line:#2C355A;
+    --near:#FF5C98; --on-near:#22061A; --far:#5FD3CD; --far-soft:#163A3F;
+    color-scheme:dark;
+  }
+}
+*{box-sizing:border-box}
+html{height:100%}
+body{margin:0;min-height:100%;background:var(--bg);color:var(--ink);font-family:var(--body);line-height:1.45;
+  padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+.wrap{max-width:1200px;margin:0 auto;padding:28px 20px 56px}
+a{color:inherit}
+header.top{display:flex;justify-content:space-between;align-items:flex-end;gap:16px;flex-wrap:wrap}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(2.4rem,6vw,4rem);letter-spacing:-.035em;line-height:.9;margin:0}
+.sub{color:var(--muted);margin:.6rem 0 0;max-width:62ch}
+.actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn{font:inherit;font-weight:700;border:1.5px solid var(--ink);background:transparent;color:var(--ink);padding:.5rem 1.05rem;border-radius:999px;cursor:pointer}
+.btn.primary{background:var(--ink);color:var(--bg)}
+.btn:disabled{opacity:.5;cursor:progress}
+.btn.small{padding:.3rem .8rem;font-size:.85rem}
+button:focus-visible,input:focus-visible,select:focus-visible,a:focus-visible{outline:3px solid var(--near);outline-offset:2px}
+#status{min-height:1.5em;color:var(--muted);font-size:.92rem;margin-top:12px}
+#status.error{color:var(--near);font-weight:700}
+.banner{background:var(--surface);border-left:5px solid var(--near);padding:12px 16px;border-radius:8px;margin-top:18px;max-width:75ch}
+.toolbar{display:flex;flex-wrap:wrap;gap:12px 18px;align-items:center;margin:30px 0 14px}
+.monthnav{display:flex;align-items:center;gap:6px}
+.monthname{font-family:var(--display);font-size:1.7rem;font-weight:800;letter-spacing:-.02em;min-width:10ch;text-align:center}
+.iconbtn{font:inherit;font-size:1.3rem;line-height:1;width:2.2rem;height:2.2rem;border-radius:999px;border:1.5px solid var(--line);background:var(--surface);color:var(--ink);cursor:pointer}
+.seg{display:inline-flex;border:1.5px solid var(--line);border-radius:999px;padding:2px;background:var(--bg)}
+.seg button{border:0;background:none;padding:.35rem .85rem;border-radius:999px;font:inherit;font-size:.92rem;color:var(--muted);cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:700;box-shadow:0 0 0 1px var(--line)}
+.search{flex:1 1 180px;max-width:260px}
+.legend{display:flex;gap:14px;font-size:.85rem;color:var(--muted);margin-left:auto}
+.legend span::before{content:"";display:inline-block;width:.8em;height:.8em;border-radius:2px;margin-right:.4em;vertical-align:-.05em;background:var(--far-soft);box-shadow:inset 0 0 0 1px var(--far)}
+.legend .lnear::before{background:var(--near);box-shadow:none}
+input,select{font:inherit;padding:.5rem .7rem;border:1.5px solid var(--line);border-radius:8px;background:var(--surface);color:var(--ink);width:100%}
+/* Month grid */
+.grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:1px;background:var(--line);border:1px solid var(--line);border-radius:12px;overflow:hidden}
+.dow{background:var(--bg);padding:6px 8px;font-size:.8rem;color:var(--muted);font-weight:700}
+.cell{background:var(--surface);min-height:118px;padding:6px;display:flex;flex-direction:column;gap:4px;min-width:0}
+.cell.out{background:var(--bg)}
+.cell.out .num{opacity:.45}
+.num{font-size:.85rem;font-weight:700;align-self:flex-start;padding:0 .4em}
+.cell.today .num{background:var(--ink);color:var(--surface);border-radius:999px}
+/* The ticket stub: notched on both sides like a torn-off ticket */
+.stub{display:block;width:100%;text-align:left;border:0;font:inherit;font-size:.78rem;line-height:1.25;padding:4px 11px;cursor:pointer;
+  background:var(--far-soft);color:var(--far);font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;border-radius:3px;
+  -webkit-mask:radial-gradient(circle 4px at 0 50%,#0000 96%,#000) left/51% 100% no-repeat,radial-gradient(circle 4px at 100% 50%,#0000 96%,#000) right/51% 100% no-repeat;
+  mask:radial-gradient(circle 4px at 0 50%,#0000 96%,#000) left/51% 100% no-repeat,radial-gradient(circle 4px at 100% 50%,#0000 96%,#000) right/51% 100% no-repeat}
+.stub.near{background:var(--near);color:var(--on-near)}
+.stub small{display:block;font-weight:400;opacity:.85;overflow:hidden;text-overflow:ellipsis}
+.more{font:inherit;font-size:.76rem;color:var(--muted);background:none;border:0;text-align:left;cursor:pointer;padding:0 4px}
+.hint-next{margin-top:12px;color:var(--muted)}
+.linkish{font:inherit;color:var(--ink);background:none;border:0;padding:0;text-decoration:underline;cursor:pointer}
+/* List */
+.monthhead{font-family:var(--display);font-size:1.5rem;font-weight:800;letter-spacing:-.02em;margin:30px 0 10px}
+.monthhead:first-child{margin-top:4px}
+.row{display:grid;grid-template-columns:58px minmax(0,1fr) auto;gap:14px;align-items:center;width:100%;text-align:left;font:inherit;color:inherit;
+  background:var(--surface);padding:12px 16px;border:0;border-left:6px solid var(--far);border-radius:8px;margin-bottom:6px;cursor:pointer}
+.row.near{border-left-color:var(--near)}
+.dateblock{font-family:var(--display);text-align:center;line-height:1}
+.dateblock b{display:block;font-size:1.75rem;font-weight:800}
+.dateblock span{font-size:.8rem;color:var(--muted)}
+.who{font-weight:700;font-size:1.05rem;overflow:hidden;text-overflow:ellipsis}
+.where{color:var(--muted);font-size:.9rem}
+.dist{font-size:.85rem;color:var(--muted);white-space:nowrap;text-align:right}
+.row.near .dist{color:var(--near);font-weight:700}
+.empty{background:var(--surface);border-radius:12px;padding:28px;max-width:70ch}
+.empty h2{font-family:var(--display);font-size:1.6rem;margin:0 0 10px;letter-spacing:-.02em}
+.empty ol{padding-left:1.3em}
+.empty li{margin-bottom:10px}
+/* Dialogs */
+dialog{border:0;border-radius:14px;padding:0;width:min(540px,94vw);max-height:90vh;background:var(--surface);color:var(--ink)}
+dialog::backdrop{background:rgb(10 14 30 / .55)}
+.dlg{padding:24px}
+.dlg h2{font-family:var(--display);font-size:1.7rem;letter-spacing:-.02em;line-height:1.05;margin:0 0 6px}
+.dlg .meta{color:var(--muted);margin:0 0 16px}
+.dlg label{display:block;font-weight:700;font-size:.92rem;margin:16px 0 5px}
+.dlg .hint{font-size:.82rem;color:var(--muted);margin:5px 0 0}
+.uri{display:block;word-break:break-all;background:var(--bg);padding:7px 9px;border-radius:6px;font-size:.82rem;margin-top:5px}
+.inline{display:flex;gap:8px}
+.inline input{flex:1}
+.checks label{display:flex;gap:8px;align-items:center;font-weight:400;margin:6px 0}
+.checks input{width:auto}
+.dlg-foot{display:flex;justify-content:flex-end;gap:8px;margin-top:22px;flex-wrap:wrap}
+.twocol{display:grid;grid-template-columns:1fr 1fr;gap:0 14px}
+.daylist .row{grid-template-columns:minmax(0,1fr) auto}
+/* Gigs you're going to */
+.stub.going::before,.row.going .who::before{content:"\2713\00a0"}
+.stub.going{box-shadow:inset 0 0 0 2px currentColor}
+.mine-sum{margin:0 0 14px;color:var(--muted);font-size:1.05rem}
+.mine{display:grid;gap:10px}
+.gig{display:grid;grid-template-columns:auto minmax(0,1fr);gap:4px 22px;align-items:center;background:var(--surface);border-radius:12px;padding:16px 20px;border-left:6px solid var(--far)}
+.gig.near{border-left-color:var(--near)}
+.count{grid-row:span 3;font-family:var(--display);text-align:center;line-height:.9;min-width:4.5ch}
+.count b{display:block;font-size:3rem;font-weight:800;letter-spacing:-.04em}
+.count span{font-size:.82rem;color:var(--muted)}
+.gig .who{font:inherit;font-weight:700;font-size:1.2rem;color:inherit;background:none;border:0;padding:0;text-align:left;cursor:pointer;justify-self:start}
+.gig .who:hover{text-decoration:underline}
+.hotel{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:.9rem}
+.hotel .seg button{font-size:.84rem;padding:.25rem .75rem}
+.hotel .seg button[data-hotel-val="todo"][aria-pressed="true"]{color:var(--near)}
+.hotel .seg button[data-hotel-val="booked"][aria-pressed="true"]{color:var(--far)}
+.past .gig{opacity:.65}
+.goingnote{font-weight:700;margin:0 0 14px}
+@media (max-width:700px){
+  .wrap{padding:20px 14px 48px}
+  .legend{margin-left:0}
+  .cell{min-height:72px;padding:3px}
+  .stub{font-size:.68rem;padding:3px 8px}
+  .stub small{display:none}
+  .twocol{grid-template-columns:1fr}
+  .gig{padding:14px;gap:4px 14px}
+  .count b{font-size:2.3rem}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Gig calendar</h1>
+      <p class="sub" id="summary">Artists from your Spotify library, matched to upcoming shows.</p>
+    </div>
+    <div class="actions">
+      <button class="btn" id="settingsBtn">Settings</button>
+      <button class="btn primary" id="mainBtn">Connect Spotify</button>
+    </div>
+  </header>
+  <div id="status" role="status" aria-live="polite"></div>
+  <div id="fileBanner" class="banner" hidden>
+    Spotify can’t sign you in from a preview window or a file opened directly on your computer. Serve this page instead: in the folder that holds it, run
+    <code>python3 -m http.server 8000 --bind 127.0.0.1</code> and open <code>http://127.0.0.1:8000/gig-calendar.html</code>, or host it on GitHub Pages.
+  </div>
+
+  <div class="toolbar" id="toolbar" hidden>
+    <div class="monthnav" id="monthnav">
+      <button class="iconbtn" id="prevBtn" aria-label="Previous month">‹</button>
+      <span class="monthname" id="monthName"></span>
+      <button class="iconbtn" id="nextBtn" aria-label="Next month">›</button>
+    </div>
+    <div class="seg" role="group" aria-label="View">
+      <button data-mode="month">Month</button>
+      <button data-mode="list">List</button>
+      <button data-mode="going">My gigs</button>
+    </div>
+    <div class="seg" role="group" aria-label="Which gigs">
+      <button data-filter="all">Whole country</button>
+      <button data-filter="near">Near me</button>
+    </div>
+    <input class="search" id="search" type="search" placeholder="Filter by artist or venue" aria-label="Filter by artist or venue">
+    <button class="btn small" id="icsBtn">Export to calendar</button>
+    <div class="legend"><span class="lnear">Near you</span><span>Elsewhere</span></div>
+  </div>
+
+  <main id="main"></main>
+</div>
+
+<dialog id="settingsDlg" aria-labelledby="setTitle">
+  <div class="dlg">
+    <h2 id="setTitle">Settings</h2>
+    <p class="meta">Stored only in this browser.</p>
+
+    <label for="clientId">Spotify Client ID</label>
+    <input id="clientId" autocomplete="off" spellcheck="false">
+    <p class="hint">Add this exact redirect URI to your Spotify app:</p>
+    <code class="uri" id="redirectUri"></code>
+
+    <label for="tmKey">Ticketmaster API key</label>
+    <input id="tmKey" autocomplete="off" spellcheck="false">
+    <p class="hint">Free from developer.ticketmaster.com (the “Consumer Key”).</p>
+
+    <div class="twocol">
+      <div>
+        <label for="country">Country</label>
+        <select id="country"></select>
+      </div>
+      <div>
+        <label for="radius">“Near me” means within</label>
+        <div class="inline"><input id="radius" type="number" min="5" max="500" step="5"><span style="align-self:center">miles</span></div>
+      </div>
+    </div>
+
+    <label for="place">Your location</label>
+    <div class="inline">
+      <input id="place" placeholder="UK postcode, or lat, lng">
+      <button class="btn small" id="findPlace">Set</button>
+    </div>
+    <p class="hint" id="placeHint"></p>
+    <button class="linkish" id="geoBtn" style="margin-top:6px">Use my current location</button>
+
+    <label>Artists to look for</label>
+    <div class="checks">
+      <label><input type="checkbox" id="srcFollowed"> Artists I follow</label>
+      <label><input type="checkbox" id="srcTop"> My most-played artists</label>
+      <label><input type="checkbox" id="srcSaved"> Artists from my liked songs</label>
+    </div>
+
+    <label for="maxArtists">Check up to this many artists</label>
+    <input id="maxArtists" type="number" min="10" max="1000" step="10">
+    <p class="hint">Artists are ranked by how much they show up in your library. Each one takes a quarter of a second to check, and Ticketmaster allows 5,000 checks a day.</p>
+
+    <div class="dlg-foot">
+      <button class="btn" id="disconnectBtn">Disconnect Spotify</button>
+      <button class="btn" id="cancelSet">Cancel</button>
+      <button class="btn primary" id="saveSet">Save settings</button>
+    </div>
+  </div>
+</dialog>
+
+<dialog id="eventDlg"><div class="dlg" id="eventBody"></div></dialog>
+
+<script>
+(function(){
+'use strict';
+const $ = s => document.querySelector(s);
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const pad = n => String(n).padStart(2,'0');
+const keyOf = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
+const parseDay = s => { const [y,m,d] = s.split('-').map(Number); return new Date(y, m-1, d); };
+const norm = s => String(s||'').toLowerCase().normalize('NFKD').replace(/[\u0300-\u036f]/g,'').replace(/&/g,'and').replace(/^the\s+/,'').replace(/[^a-z0-9]/g,'');
+
+const store = {
+  get(k, d){ try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch(e){ return d; } },
+  set(k, v){ try { localStorage.setItem(k, JSON.stringify(v)); } catch(e){} },
+  del(k){ try { localStorage.removeItem(k); } catch(e){} }
+};
+
+const COUNTRIES = [['GB','United Kingdom'],['IE','Ireland'],['US','United States'],['CA','Canada'],['AU','Australia'],['NZ','New Zealand'],
+  ['DE','Germany'],['FR','France'],['NL','Netherlands'],['BE','Belgium'],['ES','Spain'],['IT','Italy'],['SE','Sweden'],['NO','Norway'],
+  ['DK','Denmark'],['FI','Finland'],['PL','Poland'],['AT','Austria'],['CH','Switzerland'],['MX','Mexico']];
+// To share this page: fill in your Spotify Client ID and Ticketmaster key here,
+// so friends only have to sign in to Spotify and set their location.
+const PRESET = { clientId: 'fdb820d5316249259c6c8e8a2c7564e0', tmKey: 'UI5zEIYSdUARAIU1j7tupInAGgyU7PVR' };
+const DEFAULTS = {clientId:PRESET.clientId, tmKey:PRESET.tmKey, country:'GB', lat:null, lng:null, place:'', radius:50, followed:true, top:true, saved:true, maxArtists:150};
+let settings = Object.assign({}, DEFAULTS, store.get('gigcal.settings', {}));
+if (!settings.clientId) settings.clientId = PRESET.clientId;
+if (!settings.tmKey) settings.tmKey = PRESET.tmKey;
+let cache = store.get('gigcal.cache', null);
+let going = store.get('gigcal.going', {}); // id -> { ev, hotel: 'todo' | 'booked' | 'none' }
+const saveGoing = () => store.set('gigcal.going', going);
+const findEvent = id => (cache?.events || []).find(x => x.id === id) || going[id]?.ev || null;
+function toggleGoing(id){
+  if (going[id]) delete going[id];
+  else { const ev = findEvent(id); if (!ev) return; const d = withDistance([ev])[0]; going[id] = { ev: Object.assign({}, ev), hotel: d.near ? 'none' : 'todo' }; }
+  saveGoing();
+}
+function daysUntil(s){ const t = new Date(); t.setHours(0,0,0,0); return Math.round((parseDay(s) - t) / 86400000); }
+const HOTEL = { todo: 'Not booked', booked: 'Booked', none: 'Not needed' };
+const small = window.matchMedia('(max-width: 700px)').matches;
+const now = new Date();
+let view = { mode: small ? 'list' : 'month', filter: 'all', month: new Date(now.getFullYear(), now.getMonth(), 1), q: '' };
+let busy = false;
+const REDIRECT = location.origin + location.pathname.replace(/index\.html$/, '');
+
+/* ---------- status ---------- */
+function setStatus(msg, isError){ const el = $('#status'); el.textContent = msg || ''; el.classList.toggle('error', !!isError); }
+
+/* ---------- Spotify auth (PKCE, no server needed) ---------- */
+const CH = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789';
+const randStr = n => Array.from(crypto.getRandomValues(new Uint8Array(n)), b => CH[b % CH.length]).join('');
+async function challengeFor(v){
+  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(v));
+  return btoa(String.fromCharCode(...new Uint8Array(d))).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');
+}
+async function connectSpotify(){
+  if (BAD_ORIGIN){ setStatus('Spotify sign-in only works when this page is served from http://127.0.0.1 or a website. See the note above.', true); return; }
+  if (!settings.clientId){ openSettings(); setStatus('Add your Spotify Client ID first.', true); return; }
+  const verifier = randStr(64), state = randStr(16);
+  store.set('gigcal.verifier', verifier); store.set('gigcal.state', state);
+  const p = new URLSearchParams({ client_id: settings.clientId, response_type: 'code', redirect_uri: REDIRECT,
+    code_challenge_method: 'S256', code_challenge: await challengeFor(verifier),
+    scope: 'user-follow-read user-top-read user-library-read', state, show_dialog: 'true' });
+  location.href = 'https://accounts.spotify.com/authorize?' + p;
+}
+function saveToken(d){
+  const old = store.get('gigcal.token', {}) || {};
+  store.set('gigcal.token', { access: d.access_token, refresh: d.refresh_token || old.refresh, exp: Date.now() + ((d.expires_in || 3600) - 60) * 1000 });
+}
+async function handleRedirect(){
+  const q = new URLSearchParams(location.search);
+  if (!q.has('code') && !q.has('error')) return false;
+  history.replaceState(null, '', REDIRECT);
+  if (q.get('error')){ setStatus('Spotify sign-in didn’t finish (' + q.get('error') + '). Connect again when you’re ready.', true); return false; }
+  if (q.get('state') !== store.get('gigcal.state')){ setStatus('That Spotify sign-in came from a different session. Connect again.', true); return false; }
+  const body = new URLSearchParams({ grant_type: 'authorization_code', code: q.get('code'), redirect_uri: REDIRECT,
+    client_id: settings.clientId, code_verifier: store.get('gigcal.verifier') });
+  const r = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'}, body });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok){ setStatus('Spotify refused the sign-in: ' + (d.error_description || d.error || r.status) + '. Check the Client ID and redirect URI in Settings.', true); return false; }
+  saveToken(d);
+  return true;
+}
+async function accessToken(){
+  const t = store.get('gigcal.token', null);
+  if (!t) return null;
+  if (Date.now() < t.exp) return t.access;
+  if (!t.refresh) return null;
+  const r = await fetch('https://accounts.spotify.com/api/token', { method: 'POST', headers: {'Content-Type':'application/x-www-form-urlencoded'},
+    body: new URLSearchParams({ grant_type: 'refresh_token', refresh_token: t.refresh, client_id: settings.clientId }) });
+  if (!r.ok){ store.del('gigcal.token'); return null; }
+  saveToken(await r.json());
+  return store.get('gigcal.token').access;
+}
+async function sp(path){
+  const url = path.startsWith('http') ? path : 'https://api.spotify.com/v1' + path;
+  for (let i = 0; i < 4; i++){
+    const tok = await accessToken();
+    if (!tok) throw new Error('auth');
+    const r = await fetch(url, { headers: { Authorization: 'Bearer ' + tok } });
+    if (r.status === 429){ await sleep((Number(r.headers.get('Retry-After')) || 3) * 1000); continue; }
+    if (r.status === 401) throw new Error('auth');
+    if (!r.ok) throw new Error('spotify ' + r.status);
+    return r.json();
+  }
+  throw new Error('Spotify is rate-limiting requests. Try again in a few minutes.');
+}
+
+/* ---------- Read the library ---------- */
+async function collectArtists(){
+  const m = new Map(), problems = [];
+  const add = (name, w) => { if (!name) return; const k = norm(name); if (!k) return; const e = m.get(k) || { name, w: 0 }; e.w += w; m.set(k, e); };
+  const soft = e => { if (e.message === 'auth') throw e; };
+  if (settings.followed){
+    try {
+      let url = '/me/following?type=artist&limit=50';
+      while (url){ setStatus('Reading the artists you follow…'); const d = await sp(url); (d.artists?.items || []).forEach(a => add(a.name, 5)); url = d.artists?.next; }
+    } catch(e){ soft(e); problems.push('followed artists'); }
+  }
+  if (settings.top){
+    try {
+      for (const range of ['long_term','medium_term','short_term']){
+        setStatus('Reading your most-played artists…');
+        const d = await sp('/me/top/artists?limit=50&time_range=' + range); (d.items || []).forEach(a => add(a.name, 3));
+      }
+    } catch(e){ soft(e); problems.push('most-played artists'); }
+  }
+  if (settings.saved){
+    try {
+      let url = '/me/tracks?limit=50', n = 0;
+      while (url && n < 2000){
+        const d = await sp(url);
+        (d.items || []).forEach(it => ((it.track || it.item || {}).artists || []).forEach(a => add(a.name, 1)));
+        n += (d.items || []).length; setStatus(`Reading your liked songs (${n})…`); url = d.next;
+      }
+    } catch(e){ soft(e); problems.push('liked songs'); }
+  }
+  return { artists: [...m.values()].sort((a,b) => b.w - a.w), problems };
+}
+
+/* ---------- Ticketmaster ---------- */
+async function tm(params){
+  const u = 'https://app.ticketmaster.com/discovery/v2/events.json?' + new URLSearchParams(Object.assign({ apikey: settings.tmKey }, params));
+  for (let i = 0; i < 3; i++){
+    const r = await fetch(u);
+    if (r.status === 429){ await sleep(1500 * (i + 1)); continue; }
+    if (r.status === 401 || r.status === 403) throw new Error('tmkey');
+    if (!r.ok) throw new Error('ticketmaster ' + r.status);
+    return r.json();
+  }
+  return {};
+}
+async function findGigs(artists){
+  const byId = new Map(), bySlot = new Map();
+  for (let i = 0; i < artists.length; i++){
+    const a = artists[i];
+    setStatus(`Checking ${a.name} (${i+1} of ${artists.length})…`);
+    try {
+      const d = await tm({ keyword: a.name, countryCode: settings.country, classificationName: 'music', size: '50', sort: 'date,asc' });
+      for (const ev of (d._embedded?.events || [])){
+        if (!(ev._embedded?.attractions || []).some(x => norm(x.name) === norm(a.name))) continue;
+        const st = ev.dates?.start || {};
+        if (!st.localDate || ev.dates?.status?.code === 'cancelled') continue;
+        const v = ev._embedded?.venues?.[0] || {};
+        const slot = st.localDate + '|' + norm(v.name);
+        const existing = byId.get(ev.id) || bySlot.get(slot);
+        if (existing){ if (!existing.artists.includes(a.name)) existing.artists.push(a.name); continue; }
+        const e = { id: ev.id, title: ev.name, artists: [a.name], date: st.localDate, time: st.localTime || '',
+          venue: v.name || '', city: v.city?.name || '',
+          lat: v.location ? parseFloat(v.location.latitude) : null, lng: v.location ? parseFloat(v.location.longitude) : null,
+          url: ev.url || '', status: ev.dates?.status?.code || '' };
+        byId.set(ev.id, e); bySlot.set(slot, e);
+      }
+    } catch(e){ if (e.message === 'tmkey') throw e; }
+    await sleep(240);
+  }
+  return [...byId.values()].sort((x,y) => (x.date + x.time).localeCompare(y.date + y.time));
+}
+
+/* ---------- Scan ---------- */
+async function scan(){
+  if (busy) return;
+  if (!settings.tmKey){ openSettings(); setStatus('Add a Ticketmaster API key first.', true); return; }
+  busy = true; updateButtons();
+  try {
+    let who = '';
+    try { setStatus('Checking which Spotify account is connected…'); who = (await sp('/me')).display_name || ''; } catch(e){ if (e.message === 'auth') throw e; }
+    const { artists, problems } = await collectArtists();
+    if (!artists.length){ setStatus('Spotify didn’t return any artists. Check which sources are ticked in Settings.', true); return; }
+    const list = artists.slice(0, settings.maxArtists);
+    const events = await findGigs(list);
+    cache = { events, artistCount: list.length, fetchedAt: Date.now(), country: settings.country, problems, who };
+    store.set('gigcal.cache', cache);
+    for (const id in going){ const fresh = events.find(e => e.id === id); if (fresh) going[id].ev = fresh; }
+    saveGoing();
+    setStatus(problems.length ? `Done, but Spotify wouldn’t share your ${problems.join(' or ')}.` : '');
+    render();
+  } catch(e){
+    if (e.message === 'auth'){ store.del('gigcal.token'); setStatus('Your Spotify connection has expired. Connect again.', true); }
+    else if (e.message === 'tmkey') setStatus('Ticketmaster rejected the API key. Check it in Settings.', true);
+    else if (e.message === 'spotify 403') setStatus('Spotify blocked the request. Make sure your account is on the app’s user list in the Spotify dashboard.', true);
+    else setStatus(String(e.message || e), true);
+  } finally { busy = false; updateButtons(); }
+}
+
+/* ---------- Distance ---------- */
+function miles(lat1, lng1, lat2, lng2){
+  const R = 3958.8, r = x => x * Math.PI / 180;
+  const a = Math.sin(r(lat2-lat1)/2)**2 + Math.cos(r(lat1))*Math.cos(r(lat2))*Math.sin(r(lng2-lng1)/2)**2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+function withDistance(evs){
+  const has = settings.lat != null && settings.lng != null;
+  return evs.map(e => {
+    const dist = has && e.lat != null && !isNaN(e.lat) ? miles(settings.lat, settings.lng, e.lat, e.lng) : null;
+    return Object.assign({}, e, { dist, near: dist != null && dist <= settings.radius });
+  });
+}
+function visibleEvents(){
+  if (!cache) return [];
+  const q = view.q.trim().toLowerCase();
+  return withDistance(cache.events).filter(e => (view.filter !== 'near' || e.near) &&
+    (!q || (e.artists.join(' ') + ' ' + e.venue + ' ' + e.city + ' ' + e.title).toLowerCase().includes(q)));
+}
+
+/* ---------- Rendering ---------- */
+const fmtMonth = d => d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+const fmtLong = s => parseDay(s).toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+const fmtTime = t => t ? t.slice(0,5) : '';
+const distText = e => e.dist == null ? '' : (e.dist < 1 ? 'Under a mile' : Math.round(e.dist) + ' mi');
+
+function render(){
+  updateSummary();
+  const main = $('#main');
+  $('#toolbar').hidden = !cache;
+  if (!cache){ main.innerHTML = setupHTML(); return; }
+  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', b.dataset.mode === view.mode));
+  document.querySelectorAll('[data-filter]').forEach(b => b.setAttribute('aria-pressed', b.dataset.filter === view.filter));
+  $('#monthnav').style.visibility = view.mode === 'month' ? 'visible' : 'hidden';
+  $('#monthName').textContent = fmtMonth(view.month);
+  const evs = visibleEvents();
+  if (view.filter === 'near' && settings.lat == null && view.mode !== 'going'){
+    main.innerHTML = `<div class="empty"><h2>Set your location to see nearby gigs</h2><p>Add a postcode or use your current location in Settings.</p><button class="btn primary" data-open-settings>Open settings</button></div>`;
+    return;
+  }
+  main.innerHTML = view.mode === 'going' ? goingHTML() : view.mode === 'month' ? monthHTML(evs) : listHTML(evs);
+}
+
+function monthHTML(evs){
+  const y = view.month.getFullYear(), mo = view.month.getMonth();
+  const offset = (new Date(y, mo, 1).getDay() + 6) % 7;
+  const total = Math.ceil((offset + new Date(y, mo + 1, 0).getDate()) / 7) * 7;
+  const byDay = {};
+  evs.forEach(e => (byDay[e.date] = byDay[e.date] || []).push(e));
+  const today = keyOf(new Date());
+  let h = '<div class="grid" role="grid">';
+  for (let i = 0; i < 7; i++) h += `<div class="dow">${new Date(2024, 0, 1 + i).toLocaleDateString(undefined, { weekday: 'short' })}</div>`;
+  for (let i = 0; i < total; i++){
+    const d = new Date(y, mo, 1 - offset + i), k = keyOf(d);
+    const list = (byDay[k] || []).sort((a,b) => b.near - a.near);
+    h += `<div class="cell${d.getMonth() !== mo ? ' out' : ''}${k === today ? ' today' : ''}"><span class="num">${d.getDate()}</span>`;
+    list.slice(0, 3).forEach(e => { h += `<button class="stub${e.near ? ' near' : ''}${going[e.id] ? ' going' : ''}" data-id="${esc(e.id)}" title="${esc(e.artists.join(', ') + ' at ' + e.venue)}">${esc(e.artists.join(', '))}<small>${esc(e.city)}</small></button>`; });
+    if (list.length > 3) h += `<button class="more" data-day="${k}">+${list.length - 3} more</button>`;
+    h += '</div>';
+  }
+  h += '</div>';
+  const startK = keyOf(new Date(y, mo, 1)), endK = keyOf(new Date(y, mo + 1, 0));
+  if (!evs.some(e => e.date >= startK && e.date <= endK)){
+    const next = evs.find(e => e.date > endK);
+    h += `<p class="hint-next">${next ? `Nothing this month. The next one is <button class="linkish" data-jump="${next.date}">${esc(next.artists.join(', '))} on ${esc(parseDay(next.date).toLocaleDateString(undefined, { day: 'numeric', month: 'long' }))}</button>.` : 'No more gigs found after this month.'}</p>`;
+  }
+  return h;
+}
+
+function rowHTML(e, withDate){
+  const d = parseDay(e.date);
+  return `<button class="row${e.near ? ' near' : ''}${going[e.id] ? ' going' : ''}" data-id="${esc(e.id)}">
+    ${withDate ? `<span class="dateblock"><b>${d.getDate()}</b><span>${esc(d.toLocaleDateString(undefined, { weekday: 'short' }))}</span></span>` : ''}
+    <span><span class="who">${esc(e.artists.join(', '))}</span><br><span class="where">${esc([e.venue, e.city].filter(Boolean).join(', '))}${e.time ? ', ' + fmtTime(e.time) : ''}</span></span>
+    <span class="dist">${esc(distText(e))}</span></button>`;
+}
+
+function listHTML(evs){
+  const today = keyOf(new Date());
+  const up = evs.filter(e => e.date >= today);
+  if (!up.length) return `<div class="empty"><h2>No upcoming gigs found</h2><p>${view.filter === 'near' ? 'Nothing within ' + settings.radius + ' miles right now. Try a bigger radius in Settings, or switch to the whole country.' : 'None of the artists checked have shows listed in this country. Try checking more artists in Settings, then scan again.'}</p></div>`;
+  let h = '<div class="list">', cur = '';
+  up.forEach(e => {
+    const m = fmtMonth(parseDay(e.date));
+    if (m !== cur){ h += `<h2 class="monthhead">${esc(m)}</h2>`; cur = m; }
+    h += rowHTML(e, true);
+  });
+  return h + '</div>';
+}
+
+function countdown(n){
+  if (n < 0) return { big: '\u2713', small: 'went' };
+  if (n === 0) return { big: 'Today', small: 'it\u2019s on' };
+  return { big: String(n), small: n === 1 ? 'day to go' : 'days to go' };
+}
+function goingHTML(){
+  const q = view.q.trim().toLowerCase();
+  const all = withDistance(Object.values(going).map(g => g.ev))
+    .filter(e => !q || (e.artists.join(' ') + ' ' + e.venue + ' ' + e.city).toLowerCase().includes(q))
+    .sort((a,b) => (a.date + a.time).localeCompare(b.date + b.time));
+  if (!all.length) return `<div class="empty"><h2>${q ? 'None of your gigs match that' : 'No gigs picked yet'}</h2><p>${q ? 'Clear the filter to see them all.' : 'Open any gig in Month or List view and choose \u201cI\u2019m going\u201d. It\u2019ll show up here with a countdown.'}</p></div>`;
+  const up = all.filter(e => daysUntil(e.date) >= 0), past = all.filter(e => daysUntil(e.date) < 0).reverse();
+  const todo = up.filter(e => going[e.id].hotel === 'todo').length;
+  let h = `<p class="mine-sum">${up.length ? `${up.length} ${up.length === 1 ? 'gig' : 'gigs'} coming up. ` + (todo ? `${todo} still ${todo === 1 ? 'needs' : 'need'} a hotel.` : 'Every hotel is sorted.') : 'No upcoming gigs picked.'}</p>`;
+  if (up.length) h += '<div class="mine">' + up.map(gigCard).join('') + '</div>';
+  if (past.length) h += '<h2 class="monthhead">Been there</h2><div class="mine past">' + past.map(gigCard).join('') + '</div>';
+  return h;
+}
+function gigCard(e){
+  const n = daysUntil(e.date), g = going[e.id], c = countdown(n);
+  const opt = v => `<button data-hotel-id="${esc(e.id)}" data-hotel-val="${v}" aria-pressed="${g.hotel === v}">${HOTEL[v]}</button>`;
+  return `<div class="gig${e.near ? ' near' : ''}">
+    <div class="count"><b>${c.big}</b><span>${c.small}</span></div>
+    <button class="who" data-id="${esc(e.id)}">${esc(e.artists.join(', '))}</button>
+    <div class="where">${esc(fmtLong(e.date))}${e.time ? ', ' + fmtTime(e.time) : ''}<br>${esc([e.venue, e.city].filter(Boolean).join(', '))}${e.dist != null ? ', ' + esc(distText(e)) + ' away' : ''}</div>
+    ${n < 0 ? '' : `<div class="hotel"><span>Hotel</span><div class="seg" role="group" aria-label="Hotel for ${esc(e.artists[0])}">${opt('todo')}${opt('booked')}${opt('none')}</div></div>`}
+  </div>`;
+}
+
+function setupHTML(){
+  if (settings.clientId && settings.tmKey) return `<div class="empty"><h2>Two steps and you’re in</h2><ol>
+    <li>Open Settings and add your postcode, so the app knows which gigs are near you.</li>
+    <li>Choose Connect Spotify and sign in. The scan starts as soon as you’re back.</li>
+  </ol><button class="btn primary" data-open-settings>Open settings</button></div>`;
+  return `<div class="empty"><h2>Set up in about five minutes</h2><ol>
+    <li>Create an app in the <a href="https://developer.spotify.com/dashboard" target="_blank" rel="noopener">Spotify developer dashboard</a>. Tick “Web API”, and add this redirect URI:<code class="uri">${BAD_ORIGIN ? 'Shown here once the page is opened from http://127.0.0.1 or a website.' : esc(REDIRECT)}</code>Copy the app’s Client ID. Spotify requires a Premium account for this.</li>
+    <li>Sign up at <a href="https://developer.ticketmaster.com/" target="_blank" rel="noopener">developer.ticketmaster.com</a> and copy your free Consumer Key.</li>
+    <li>Paste both into Settings and add your location.</li>
+    <li>Connect Spotify. The scan starts as soon as you’re back.</li>
+  </ol><button class="btn primary" data-open-settings>Open settings</button></div>`;
+}
+
+function updateSummary(){
+  const el = $('#summary');
+  if (!cache){ el.textContent = 'Artists from your Spotify library, matched to upcoming shows.'; return; }
+  const all = withDistance(cache.events).filter(e => e.date >= keyOf(new Date()));
+  const near = all.filter(e => e.near).length;
+  const ago = Math.round((Date.now() - cache.fetchedAt) / 3600000);
+  const when = ago < 1 ? 'within the last hour' : ago < 48 ? ago + ' hours ago' : Math.round(ago / 24) + ' days ago';
+  const country = (COUNTRIES.find(c => c[0] === cache.country) || [0, cache.country])[1];
+  el.textContent = `${all.length} upcoming ${all.length === 1 ? 'gig' : 'gigs'} in ${country} from ${cache.artistCount} of your artists` +
+    (settings.lat != null ? `, ${near} within ${settings.radius} miles` : '') + `. Checked ${when}` + (cache.who ? `, from ${cache.who}’s Spotify.` : '.');
+}
+
+function updateButtons(){
+  const b = $('#mainBtn');
+  const connected = !!store.get('gigcal.token', null);
+  b.textContent = busy ? 'Scanning…' : connected ? (cache ? 'Scan again' : 'Find my gigs') : 'Connect Spotify';
+  b.disabled = busy;
+  $('#disconnectBtn').hidden = !connected;
+}
+
+/* ---------- Event details ---------- */
+function openEvent(id){
+  const raw = findEvent(id);
+  if (!raw) return;
+  const e = withDistance([raw])[0], g = going[e.id], n = daysUntil(e.date);
+  $('#eventBody').innerHTML = `<h2>${esc(e.artists.join(', '))}</h2>
+    <p class="meta">${esc(fmtLong(e.date))}${e.time ? ', ' + fmtTime(e.time) : ''}</p>
+    ${g ? `<p class="goingnote">You\u2019re going. ${n > 1 ? n + ' days to go' : n === 1 ? 'It\u2019s tomorrow' : n === 0 ? 'It\u2019s today' : 'This one\u2019s been and gone'}${n >= 0 ? '. Hotel: ' + HOTEL[g.hotel].toLowerCase() : ''}.</p>` : ''}
+    ${e.title && norm(e.title) !== norm(e.artists.join('')) ? `<p>${esc(e.title)}</p>` : ''}
+    <p><strong>${esc(e.venue)}</strong><br>${esc(e.city)}${e.dist != null ? `<br><span style="color:var(--muted)">${esc(distText(e))} from you</span>` : ''}</p>
+    ${e.status && e.status !== 'onsale' ? `<p style="color:var(--near);font-weight:700">Ticket status: ${esc(e.status)}</p>` : ''}
+    <div class="dlg-foot">
+      <button class="btn${g ? '' : ' primary'}" data-going="${esc(e.id)}">${g ? 'Not going any more' : 'I\u2019m going'}</button>
+      <button class="btn" data-ics="${esc(e.id)}">Add to calendar</button>
+      ${e.url ? `<a class="btn" style="text-decoration:none" href="${esc(e.url)}" target="_blank" rel="noopener">Find tickets</a>` : ''}
+      <button class="btn" data-close>Close</button>
+    </div>`;
+  if (!$('#eventDlg').open) $('#eventDlg').showModal();
+}
+function openDay(k){
+  const list = visibleEvents().filter(e => e.date === k);
+  $('#eventBody').innerHTML = `<h2>${esc(fmtLong(k))}</h2><p class="meta">${list.length} gigs</p><div class="daylist">${list.map(e => rowHTML(e, false)).join('')}</div><div class="dlg-foot"><button class="btn" data-close>Close</button></div>`;
+  $('#eventDlg').showModal();
+}
+
+/* ---------- Calendar export ---------- */
+function icsText(evs){
+  const ie = s => String(s || '').replace(/\\/g,'\\\\').replace(/;/g,'\\;').replace(/,/g,'\\,').replace(/\n/g,'\\n');
+  const stamp = new Date().toISOString().replace(/[-:]/g,'').replace(/\.\d+/,'');
+  const L = ['BEGIN:VCALENDAR','VERSION:2.0','PRODID:-//Gig calendar//EN','CALSCALE:GREGORIAN'];
+  evs.forEach(e => {
+    const d = e.date.replace(/-/g,'');
+    L.push('BEGIN:VEVENT', 'UID:' + e.id + '@gig-calendar', 'DTSTAMP:' + stamp);
+    if (e.time){ L.push('DTSTART:' + d + 'T' + e.time.replace(/:/g,'').padEnd(6,'0').slice(0,6)); }
+    else { const n = parseDay(e.date); n.setDate(n.getDate() + 1); L.push('DTSTART;VALUE=DATE:' + d, 'DTEND;VALUE=DATE:' + keyOf(n).replace(/-/g,'')); }
+    L.push('SUMMARY:' + ie(e.artists.join(', ')), 'LOCATION:' + ie([e.venue, e.city].filter(Boolean).join(', ')));
+    if (e.url) L.push('URL:' + e.url);
+    L.push('END:VEVENT');
+  });
+  L.push('END:VCALENDAR');
+  return L.join('\r\n');
+}
+function download(name, text){
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([text], { type: 'text/calendar' }));
+  a.download = name; document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+/* ---------- Settings ---------- */
+function openSettings(){
+  $('#clientId').value = settings.clientId; $('#tmKey').value = settings.tmKey;
+  $('#country').value = settings.country; $('#radius').value = settings.radius;
+  $('#place').value = settings.place || ''; $('#maxArtists').value = settings.maxArtists;
+  $('#srcFollowed').checked = settings.followed; $('#srcTop').checked = settings.top; $('#srcSaved').checked = settings.saved;
+  $('#placeHint').textContent = settings.lat != null ? `Set to ${settings.place || 'your current location'}.` : 'Not set yet.';
+  draftLoc = { lat: settings.lat, lng: settings.lng, place: settings.place };
+  $('#settingsDlg').showModal();
+}
+let draftLoc = {};
+async function lookupPlace(){
+  const v = $('#place').value.trim(), hint = $('#placeHint');
+  const coords = v.match(/^\s*(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)\s*$/);
+  if (coords){ draftLoc = { lat: +coords[1], lng: +coords[2], place: v }; hint.textContent = 'Location set.'; return; }
+  if (!v){ hint.textContent = 'Type a UK postcode, or coordinates like 51.58, -2.99.'; return; }
+  hint.textContent = 'Looking up ' + v + '…';
+  const pc = encodeURIComponent(v.replace(/\s+/g,''));
+  try {
+    let r = await fetch('https://api.postcodes.io/postcodes/' + pc);
+    if (!r.ok) r = await fetch('https://api.postcodes.io/outcodes/' + pc);
+    if (!r.ok) throw 0;
+    const d = (await r.json()).result;
+    draftLoc = { lat: d.latitude, lng: d.longitude, place: v.toUpperCase() };
+    hint.textContent = `Found ${v.toUpperCase()}${d.admin_district ? ' (' + (Array.isArray(d.admin_district) ? d.admin_district[0] : d.admin_district) + ')' : ''}.`;
+  } catch(e){ hint.textContent = 'Couldn’t find that postcode. Outside the UK, enter coordinates like 48.85, 2.35, or use your current location.'; }
+}
+function useGeo(){
+  const hint = $('#placeHint');
+  if (!navigator.geolocation){ hint.textContent = 'This browser can’t share your location.'; return; }
+  hint.textContent = 'Asking your browser for your location…';
+  navigator.geolocation.getCurrentPosition(
+    p => { draftLoc = { lat: p.coords.latitude, lng: p.coords.longitude, place: 'your current location' }; $('#place').value = ''; hint.textContent = 'Using your current location.'; },
+    () => { hint.textContent = 'Location access was blocked. Type a postcode instead.'; },
+    { timeout: 10000 });
+}
+function saveSettings(){
+  const countryChanged = $('#country').value !== settings.country;
+  settings = Object.assign(settings, {
+    clientId: $('#clientId').value.trim() || PRESET.clientId, tmKey: $('#tmKey').value.trim() || PRESET.tmKey, country: $('#country').value,
+    radius: Math.max(1, +$('#radius').value || 50), maxArtists: Math.max(10, +$('#maxArtists').value || 150),
+    followed: $('#srcFollowed').checked, top: $('#srcTop').checked, saved: $('#srcSaved').checked,
+    lat: draftLoc.lat ?? null, lng: draftLoc.lng ?? null, place: draftLoc.place || ''
+  });
+  store.set('gigcal.settings', settings);
+  $('#settingsDlg').close();
+  if (countryChanged && cache){ setStatus('Country changed. Scan again to find gigs there.'); }
+  updateButtons(); render();
+}
+
+/* ---------- Wiring ---------- */
+$('#country').innerHTML = COUNTRIES.map(([c, n]) => `<option value="${c}">${esc(n)}</option>`).join('');
+$('#redirectUri').textContent = REDIRECT;
+const BAD_ORIGIN = location.protocol === 'file:' || location.origin === 'null' || !/^https?:$/.test(location.protocol);
+if (BAD_ORIGIN){
+  $('#fileBanner').hidden = false;
+  $('#redirectUri').textContent = 'Not available here. Open this page from http://127.0.0.1 or a website first.';
+}
+
+$('#settingsBtn').onclick = openSettings;
+$('#cancelSet').onclick = () => $('#settingsDlg').close();
+$('#saveSet').onclick = saveSettings;
+$('#findPlace').onclick = lookupPlace;
+$('#place').addEventListener('keydown', e => { if (e.key === 'Enter'){ e.preventDefault(); lookupPlace(); } });
+$('#geoBtn').onclick = useGeo;
+$('#disconnectBtn').onclick = () => { store.del('gigcal.token'); store.del('gigcal.cache'); cache = null; $('#settingsDlg').close(); updateButtons(); render(); setStatus('Spotify disconnected and the scan results cleared. To use another account, choose Connect Spotify, then “Not you?” on Spotify’s page.'); };
+$('#mainBtn').onclick = () => store.get('gigcal.token', null) ? scan() : connectSpotify();
+$('#prevBtn').onclick = () => { view.month = new Date(view.month.getFullYear(), view.month.getMonth() - 1, 1); render(); };
+$('#nextBtn').onclick = () => { view.month = new Date(view.month.getFullYear(), view.month.getMonth() + 1, 1); render(); };
+document.querySelectorAll('[data-mode]').forEach(b => b.onclick = () => { view.mode = b.dataset.mode; render(); });
+document.querySelectorAll('[data-filter]').forEach(b => b.onclick = () => { view.filter = b.dataset.filter; render(); });
+$('#search').addEventListener('input', e => { view.q = e.target.value; render(); });
+$('#icsBtn').onclick = () => {
+  const src = view.mode === 'going' ? Object.values(going).map(g => g.ev) : visibleEvents();
+  const up = src.filter(e => e.date >= keyOf(new Date()));
+  if (!up.length){ setStatus('There are no upcoming gigs in this view to export.', true); return; }
+  download('gigs.ics', icsText(up)); setStatus(`Exported ${up.length} gigs. Open gigs.ics to add them to your calendar.`);
+};
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-id],[data-day],[data-jump],[data-open-settings],[data-close],[data-ics],[data-going],[data-hotel-id]');
+  if (!t) return;
+  if (t.dataset.going){ toggleGoing(t.dataset.going); openEvent(t.dataset.going); render(); return; }
+  if (t.dataset.hotelId){ if (going[t.dataset.hotelId]){ going[t.dataset.hotelId].hotel = t.dataset.hotelVal; saveGoing(); render(); } return; }
+  if (t.dataset.ics){ const ev = findEvent(t.dataset.ics); if (ev) download(norm(ev.artists[0]) + '-' + ev.date + '.ics', icsText([ev])); return; }
+  if (t.hasAttribute('data-close')){ t.closest('dialog').close(); return; }
+  if (t.hasAttribute('data-open-settings')){ openSettings(); return; }
+  if (t.dataset.jump){ const d = parseDay(t.dataset.jump); view.month = new Date(d.getFullYear(), d.getMonth(), 1); render(); return; }
+  if (t.dataset.day){ openDay(t.dataset.day); return; }
+  if (t.dataset.id){ if ($('#eventDlg').open) $('#eventDlg').close(); openEvent(t.dataset.id); }
+});
+document.querySelectorAll('dialog').forEach(d => d.addEventListener('click', e => { if (e.target === d) d.close(); }));
+
+if ('serviceWorker' in navigator && !BAD_ORIGIN) navigator.serviceWorker.register('sw.js').catch(() => {});
+
+(async () => {
+  updateButtons(); render();
+  try { if (await handleRedirect()){ updateButtons(); scan(); } }
+  catch(e){ setStatus('Couldn’t reach Spotify to finish signing in. Check your connection and try again.', true); }
+})();
+})();
+</script>
+</body>
+</html>
